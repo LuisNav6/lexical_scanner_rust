@@ -1,7 +1,3 @@
-¡Claro! Aquí tienes una descripción para tu código con emojis:
-
----
-
 ### 🚀 Descripción
 
 Este repositorio contiene un programa escrito en Rust para realizar el análisis léxico de un código fuente en un lenguaje de programación simulado. El análisis léxico es la primera fase del proceso de compilación, donde se convierte una secuencia de caracteres en una secuencia de tokens, que son unidades léxicas con significado en el lenguaje de programación.
