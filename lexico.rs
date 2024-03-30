@@ -221,10 +221,23 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                 }
             }
             StateType::InNum => {
-                if c.is_digit(10) || c == '.' {
+                if c.is_digit(10) {
+                    token_string.push(c);
+                } else if c == '.' {
+                    state = StateType::InReal;
                     token_string.push(c);
                 } else {
                     tokens.push((TokenType::NumInt, token_string.clone(), lineno, column_number - token_string.len()));
+                    token_string.clear();
+                    state = StateType::Start;
+                    unget_next_char(&mut linepos); // Retornar un carácter
+                }
+            }
+            StateType::InReal => {
+                if c.is_digit(10) {
+                    token_string.push(c);
+                } else {
+                    tokens.push((TokenType::NumReal, token_string.clone(), lineno, column_number - token_string.len()));
                     token_string.clear();
                     state = StateType::Start;
                     unget_next_char(&mut linepos); // Retornar un carácter
@@ -262,21 +275,68 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
 
 fn main() {
     let file_content = r#"
-    // Ejemplo de código fuente
-    int main(){ 
-            int x1=5;
-            double y=3.14^2;
-            ¿ !
-            if(x>= != <= == 0&y<5.0%2){
-                x=x*2;
-                y=y/2;
-            }else{ 
-                x=x-1;
-                y=y+1;
-            } 
-            ¿
-            return x;
-        }
+    //numeros enteros y reales con o sin signo
+    123
+-456
+0
+12.34
+-56.78
+0.123
+-.456
+789.0
+//identificadores
+variable
+_underscore
+var123
+variable_123
+Var123_
+/* 
+comentario
+de
+multiples
+lineas */
+//palabras reservadas
+if
+else
+do
+while
+switch
+case
+end
+repeat
+until
+read
+write
+int
+double
+main
+return
+//operadores aritméticos
++
+-
+*
+/
+%
+^
+//operadores relacionales
+==
+!=
+<
+<=
+>
+>=
+//operadores lógicos
+&
+|
+//símbolos
+(
+)
+{
+}
+,
+;
+//asignación
+=
     "#;
     
     let (tokens, errors) = get_token(&file_content);
