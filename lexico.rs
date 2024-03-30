@@ -282,11 +282,11 @@ fn main() {
 12.34
 -56.78
 0.123
--.456
+-0.456
 789.0
 //identificadores
 variable
-_underscore
+underscore_
 var123
 variable_123
 Var123_
