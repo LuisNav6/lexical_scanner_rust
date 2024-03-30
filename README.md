@@ -15,3 +15,4 @@ El programa consta de las siguientes partes principales:
 3. **Función main**: Contiene un ejemplo de código fuente simulado y llama a la función `get_token` para realizar el análisis léxico. Luego imprime los tokens resultantes junto con su información de ubicación en el código fuente.
 
 Este programa se ha desarrollado con el objetivo de entender y demostrar el proceso de análisis léxico en un compilador, utilizando el lenguaje de programación Rust. 📝
+Puedes probar este programa en la siguiente URL de un compilador web de Rust: https://www.programiz.com/rust/online-compiler/ 🌐
