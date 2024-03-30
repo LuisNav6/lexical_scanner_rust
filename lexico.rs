@@ -79,6 +79,7 @@ fn get_next_char(line: &str, linepos: &mut usize, bufsize: usize) -> char {
     } else {
         let c = line.chars().nth(*linepos).unwrap_or('\0'); // Usa unwrap_or para devolver un carácter nulo si el índice está fuera de rango
         *linepos += 1;
+        
         c
     }
 }
@@ -114,8 +115,9 @@ fn reserved_lookup(s: &str) -> TokenType {
 }
 
 // Función para realizar el análisis léxico y devolver los tokens
-fn get_token(content: &str) -> Vec<(TokenType, String, usize, usize)> {
+fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(TokenType, String, usize, usize)>) {
     let mut tokens = Vec::new();
+    let mut errors = Vec::new();
     let mut lineno = 0;
     let mut state = StateType::Start;
     let mut token_string = String::new();
@@ -123,7 +125,7 @@ fn get_token(content: &str) -> Vec<(TokenType, String, usize, usize)> {
     let bufsize = content.len();
     let mut column_number = 1;
     while linepos <= bufsize {
-        column_number +=1;
+        column_number += 1;
         let c = get_next_char(content, &mut linepos, bufsize);
         match state {
             StateType::Start => {
@@ -187,7 +189,7 @@ fn get_token(content: &str) -> Vec<(TokenType, String, usize, usize)> {
                         '\0' => {
                             state = StateType::EndFile;
                         }
-                        _ => tokens.push((TokenType::ERROR, c.to_string(), lineno, column_number)),
+                        _ => errors.push((TokenType::ERROR, c.to_string(), lineno, column_number)),
                     }
                 }
             }
@@ -195,20 +197,20 @@ fn get_token(content: &str) -> Vec<(TokenType, String, usize, usize)> {
                 if c.is_ascii_alphanumeric() || c == '_' {
                     token_string.push(c);
                 } else {
-                    tokens.push((reserved_lookup(&token_string), token_string.clone(), lineno, column_number));
+                    tokens.push((reserved_lookup(&token_string), token_string.clone(), lineno, column_number - token_string.len()));
                     token_string.clear();
                     state = StateType::Start;
-                    continue; // Seguir con el siguiente carácter en la misma iteración
+                    unget_next_char(&mut linepos); // Retornar un carácter
                 }
             }
             StateType::InNum => {
                 if c.is_digit(10) || c == '.' {
                     token_string.push(c);
                 } else {
-                    tokens.push((TokenType::NumInt, token_string.clone(), lineno, column_number));
+                    tokens.push((TokenType::NumInt, token_string.clone(), lineno, column_number - token_string.len()));
                     token_string.clear();
                     state = StateType::Start;
-                    continue; // Seguir con el siguiente carácter en la misma iteración
+                    unget_next_char(&mut linepos); // Retornar un carácter
                 }
             }
             StateType::InComment => {
@@ -232,37 +234,49 @@ fn get_token(content: &str) -> Vec<(TokenType, String, usize, usize)> {
             }
             StateType::EndFile => {
                 tokens.push((TokenType::ENDFILE, "\0".to_string(), lineno, column_number));
-                break; // Salir del bucle mientras
+                break; // Salir del bucle while
             }
             _ => (),
         }
     }
-    tokens
+    (tokens, errors)
 }
+
 
 fn main() {
     let file_content = r#"
     // Ejemplo de código fuente
-    int main () { 
-            int x1 = 5 ;
-            double y = 3.14^2 ;
+    int main(){ 
+            int x1=5;
+            double y=3.14^2;
             ¿
-            if (x > 0 & y < 5.0 % 2) {
-                x = x * 2 ;
-                y = y / 2 ;
-            } else { 
-                x = x - 1 ;
-                y = y + 1 ;
+            if(x>0&y<5.0%2){
+                x=x*2;
+                y=y/2;
+            }else{ 
+                x=x-1;
+                y=y+1;
             } 
-            return x ;
+            ¿
+            return x;
         }
     "#;
     
-    let tokens = get_token(&file_content);
-    for (token_type, lexeme, line, column) in tokens {
-                println!(
-                    "Token: {:?}, Lexema: {}, Linea: {}, Columna: {}",
-                    token_type, lexeme, line, column
-                );
-            }
+    let (tokens, errors) = get_token(&file_content);
+    
+    println!("Tokens:");
+    for (token_type, lexeme, line, column) in &tokens {
+        println!(
+            "Type: {:?}, Lexeme: {}, Line: {}, Column: {}",
+            token_type, lexeme, line, column
+        );
+    }
+
+    println!("\nErrors:");
+    for (error_type, lexeme, line, column) in &errors {
+        println!(
+            "Type: {:?}, Lexeme: {}, Line: {}, Column: {}",
+            error_type, lexeme, line, column
+        );
+    }
 }
