@@ -118,7 +118,7 @@ fn reserved_lookup(s: &str) -> TokenType {
 fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(TokenType, String, usize, usize)>) {
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
-    let mut lineno = 0;
+    let mut lineno = 1;
     let mut state = StateType::Start;
     let mut token_string = String::new();
     let mut linepos = 0;
@@ -153,7 +153,24 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                     }
                 } else {
                     match c {
-                        '=' => tokens.push((TokenType::EQ, "=".to_string(), lineno, column_number)),
+                        '=' => {
+                            let next_char = get_next_char(content, &mut linepos, bufsize);
+                            if next_char == '=' {
+                                tokens.push((TokenType::EQ, "==".to_string(), lineno, column_number));
+                            } else {
+                                tokens.push((TokenType::ASSIGN, "=".to_string(), lineno, column_number));
+                                unget_next_char(&mut linepos);
+                            }
+                        }
+                        '!' => {
+                            let next_char = get_next_char(content, &mut linepos, bufsize);
+                            if next_char == '=' {
+                                tokens.push((TokenType::NEQ, "!=".to_string(), lineno, column_number));
+                            } else {
+                                errors.push((TokenType::ERROR, "!".to_string(), lineno, column_number));
+                                unget_next_char(&mut linepos);
+                            }
+                        }
                         '<' => {
                             let next_char = get_next_char(content, &mut linepos, bufsize);
                             if next_char == '=' {
@@ -249,8 +266,8 @@ fn main() {
     int main(){ 
             int x1=5;
             double y=3.14^2;
-            ¿
-            if(x>0&y<5.0%2){
+            ¿ !
+            if(x>= != <= == 0&y<5.0%2){
                 x=x*2;
                 y=y/2;
             }else{ 
