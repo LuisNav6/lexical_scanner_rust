@@ -123,9 +123,8 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
     let mut token_string = String::new();
     let mut linepos = 0;
     let bufsize = content.len();
-    let mut column_number = 1;
+    let mut column_number = 0;
     while linepos <= bufsize {
-        column_number += 1;
         let c = get_next_char(content, &mut linepos, bufsize);
         match state {
             StateType::Start => {
@@ -135,58 +134,80 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                 }
                 if c.is_whitespace() {
                     // Ignorar espacios en blanco
+                    column_number +=1;
                 } else if c.is_ascii_alphabetic() || c == '_' {
                     state = StateType::InId;
                     token_string.push(c);
+                    column_number +=1;
                 } else if c.is_digit(10) {
                     state = StateType::InNum;
                     token_string.push(c);
+                    column_number +=1;
                 } else if c == '/' {
                     let next_char = get_next_char(content, &mut linepos, bufsize);
                     if next_char == '/' {
-                        state = StateType::InComment;
+                        let next_char = get_next_char(content, &mut linepos, bufsize);
+                        if next_char == '\n' {
+                            lineno += 1;
+                        } else {
+                            unget_next_char(&mut linepos);
+                            state = StateType::InComment;
+                            lineno += 1;
+                        }
                     } else if next_char == '*' {
-                        state = StateType::InMultiComment;
+                        lineno += 1;
+                        let next_char = get_next_char(content, &mut linepos, bufsize);
+                        if next_char == '\n' {
+                            lineno += 1;
+                        } else {
+                            unget_next_char(&mut linepos);
+                            state = StateType::InMultiComment;
+                            lineno += 1;
+                        }
                     } else {
-                        tokens.push((TokenType::DIVIDE, "/".to_string(), lineno, column_number));
-                        unget_next_char(&mut linepos);
+                        tokens.push((TokenType::DIVIDE, "/".to_string(), lineno, column_number - 1));
+                        unget_next_char(&mut linepos)
                     }
                 } else {
                     match c {
                         '=' => {
                             let next_char = get_next_char(content, &mut linepos, bufsize);
                             if next_char == '=' {
-                                tokens.push((TokenType::EQ, "==".to_string(), lineno, column_number));
+                                tokens.push((TokenType::EQ, "==".to_string(), lineno, column_number - 1));
                             } else {
-                                tokens.push((TokenType::ASSIGN, "=".to_string(), lineno, column_number));
+                                tokens.push((TokenType::ASSIGN, "=".to_string(), lineno, column_number - 1));
                                 unget_next_char(&mut linepos);
+
                             }
                         }
                         '!' => {
                             let next_char = get_next_char(content, &mut linepos, bufsize);
                             if next_char == '=' {
-                                tokens.push((TokenType::NEQ, "!=".to_string(), lineno, column_number));
+                                tokens.push((TokenType::NEQ, "!=".to_string(), lineno, column_number - 1));
                             } else {
-                                errors.push((TokenType::ERROR, "!".to_string(), lineno, column_number));
+                                errors.push((TokenType::ERROR, "!".to_string(), lineno, column_number - 1));
                                 unget_next_char(&mut linepos);
+
                             }
                         }
                         '<' => {
                             let next_char = get_next_char(content, &mut linepos, bufsize);
                             if next_char == '=' {
-                                tokens.push((TokenType::LTE, "<=".to_string(), lineno, column_number));
+                                tokens.push((TokenType::LTE, "<=".to_string(), lineno, column_number - 1));
                             } else {
-                                tokens.push((TokenType::LT, "<".to_string(), lineno, column_number));
+                                tokens.push((TokenType::LT, "<".to_string(), lineno, column_number - 1));
                                 unget_next_char(&mut linepos);
+
                             }
                         }
                         '>' => {
                             let next_char = get_next_char(content, &mut linepos, bufsize);
                             if next_char == '=' {
-                                tokens.push((TokenType::GTE, ">=".to_string(), lineno, column_number));
+                                tokens.push((TokenType::GTE, ">=".to_string(), lineno, column_number - 1));
                             } else {
-                                tokens.push((TokenType::GT, ">".to_string(), lineno, column_number));
+                                tokens.push((TokenType::GT, ">".to_string(), lineno, column_number - 1));
                                 unget_next_char(&mut linepos);
+
                             }
                         }
                         '+' => tokens.push((TokenType::PLUS, "+".to_string(), lineno, column_number)),
@@ -206,7 +227,7 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                         '\0' => {
                             state = StateType::EndFile;
                         }
-                        _ => errors.push((TokenType::ERROR, c.to_string(), lineno, column_number)),
+                        _ => errors.push((TokenType::ERROR, c.to_string(), lineno, column_number - 1)),
                     }
                 }
             }
@@ -214,7 +235,7 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                 if c.is_ascii_alphanumeric() || c == '_' {
                     token_string.push(c);
                 } else {
-                    tokens.push((reserved_lookup(&token_string), token_string.clone(), lineno, column_number - token_string.len()));
+                    tokens.push((reserved_lookup(&token_string), token_string.clone(), lineno, (column_number - 1)));
                     token_string.clear();
                     state = StateType::Start;
                     unget_next_char(&mut linepos); // Retornar un carácter
@@ -227,43 +248,46 @@ fn get_token(content: &str) -> (Vec<(TokenType, String, usize, usize)>, Vec<(Tok
                     state = StateType::InReal;
                     token_string.push(c);
                 } else {
-                    tokens.push((TokenType::NumInt, token_string.clone(), lineno, column_number - token_string.len()));
+                    tokens.push((TokenType::NumInt, token_string.clone(), lineno, (column_number - 1)));
                     token_string.clear();
                     state = StateType::Start;
-                    unget_next_char(&mut linepos); // Retornar un carácter
+                    unget_next_char(&mut linepos); // Retornar un caráct
                 }
             }
             StateType::InReal => {
                 if c.is_digit(10) {
                     token_string.push(c);
                 } else {
-                    tokens.push((TokenType::NumReal, token_string.clone(), lineno, column_number - token_string.len()));
+                    tokens.push((TokenType::NumReal, token_string.clone(), lineno, (column_number - 1)));
                     token_string.clear();
                     state = StateType::Start;
-                    unget_next_char(&mut linepos); // Retornar un carácter
+                    unget_next_char(&mut linepos); // Retornar un caráct
                 }
             }
             StateType::InComment => {
                 if c == '\n' || c == '\0' {
                     state = StateType::Start;
+                    column_number = 1;
                 }
             }
             StateType::InMultiComment => {
                 if c == '*' {
+                    lineno += 1;
                     let next_char = get_next_char(content, &mut linepos, bufsize);
                     if next_char == '/' {
                         state = StateType::Start;
+                        lineno += 1;
                     } else {
-                        unget_next_char(&mut linepos);
+                        unget_next_char(&mut linepos)
                     }
                 } else if c == '\0' {
-                    tokens.push((TokenType::InMultipleComment, "/*".to_string(), lineno, column_number));
+                    tokens.push((TokenType::InMultipleComment, "/*".to_string(), lineno, column_number - 1));
                     println!("Error: '/*' Multiline comment not closed.");
                     state = StateType::EndFile;
                 }
             }
             StateType::EndFile => {
-                tokens.push((TokenType::ENDFILE, "\0".to_string(), lineno, column_number));
+                tokens.push((TokenType::ENDFILE, "\0".to_string(), lineno, column_number - 1));
                 break; // Salir del bucle while
             }
             _ => (),
