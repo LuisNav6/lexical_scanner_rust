@@ -70,13 +70,11 @@ enum TokenType {
 #[derive(Debug, PartialEq)]
 enum StateType {
     Start,
-    InAssign,
     InComment,
     InMultiComment,
     InNum,
     InReal,
     InId,
-    Done,
     EndFile,
 }
 
